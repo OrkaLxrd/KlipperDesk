@@ -114,7 +114,7 @@ class SettingsDialog(QtWidgets.QDialog):
     def __init__(self, config: Config, parent=None):
         super().__init__(parent)
         self.config = config
-        self.setWindowTitle("Настройки Klipper Gadget")
+        self.setWindowTitle("Настройки KlipperDesk")
         self.setWindowFlags(QtCore.Qt.Window | QtCore.Qt.WindowCloseButtonHint)
         self.setFixedSize(500, 650)
         self.setup_ui()
@@ -1612,4 +1612,5 @@ def main():
 
 
 if __name__ == "__main__":
+
     main()
