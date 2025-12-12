@@ -40,7 +40,7 @@
 
 #### Клонируйте репозиторий (Или скачайте его)
 ```
-git clone https://github.com/yourname/KlipperDesk.git
+git clone https://github.com/OrkaLxrd/KlipperDesk.git
 cd KlipperDesk
 ```
 
