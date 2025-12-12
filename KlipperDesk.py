@@ -1486,7 +1486,7 @@ class KlipperApp(QtCore.QObject):
             ip = printer.get("ip", "")
             ind = printer.get("index")
             if ip:
-                self.printers_data[ip] = PrinterData(name, ip, ind)
+                self.printers_data[ip] = PrinterData(name, ip)
                 self.ws_manager.start_printer(printer)
         
         # Start update timer
@@ -1614,3 +1614,4 @@ def main():
 if __name__ == "__main__":
 
     main()
+
