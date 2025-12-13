@@ -10,6 +10,7 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import Dict, List, Optional, Callable
 
 from PyQt5 import QtWidgets, QtCore, QtGui
+from PyQt5.QtWidgets import QSystemTrayIcon, QMenu, QAction
 
 end = False
 updates_paused = False
@@ -1441,6 +1442,112 @@ class SinglePrinterWidget(QtWidgets.QWidget):
             self.footer_animation.setEndValue(0)
             self.footer_animation.start()
 
+# ---------------------------
+# Tray Icon Manager
+# ---------------------------
+class TrayIconManager(QtCore.QObject):
+    """Manages system tray icon"""
+    
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.tray_icon = None
+        self.create_tray_icon()
+    
+    def create_tray_icon(self):
+        """Create and setup tray icon"""
+        if QSystemTrayIcon.isSystemTrayAvailable():
+            # Создаем иконку (можно использовать любую картинку или стандартную)
+            icon = QtGui.QIcon.fromTheme("printer")  # или создайте свою иконку
+            if icon.isNull():
+                # Создаем простую иконку программно если нет системной
+                pixmap = QtGui.QPixmap(64, 64)
+                pixmap.fill(QtGui.QColor(45, 156, 255))
+                painter = QtGui.QPainter(pixmap)
+                painter.setPen(QtGui.QColor(255, 255, 255))
+                painter.setFont(QtGui.QFont("Arial", 20))
+                painter.drawText(pixmap.rect(), QtCore.Qt.AlignCenter, "K")
+                painter.end()
+                icon = QtGui.QIcon(pixmap)
+            
+            # Создаем tray иконку
+            self.tray_icon = QSystemTrayIcon(icon)
+            self.tray_icon.setToolTip("Klipper Desk Monitor")
+            
+            # Создаем контекстное меню
+            menu = QMenu()
+            
+            # Действие "Выход"
+            exit_action = QAction("Выход", menu)
+            exit_action.triggered.connect(self.exit_application)
+            menu.addAction(exit_action)
+            
+            self.tray_icon.setContextMenu(menu)
+            
+            # Обработчик клика по иконке
+            self.tray_icon.activated.connect(self.on_tray_icon_activated)
+            
+            # Показываем иконку
+            self.tray_icon.show()
+            
+            # Показываем уведомление при старте
+            self.tray_icon.showMessage(
+                "Klipper Desk",
+                "Приложение запущено в системном трее",
+                QSystemTrayIcon.Information,
+                2000
+            )
+    
+    def on_tray_icon_activated(self, reason):
+        """Handle tray icon clicks"""
+        if reason == QSystemTrayIcon.DoubleClick:
+            # При двойном клике показываем/скрываем все окна
+            self.toggle_windows_visibility()
+        elif reason == QSystemTrayIcon.MiddleClick:
+            # При среднем клике - выход
+            self.exit_application()
+    
+    def toggle_windows_visibility(self):
+        """Toggle visibility of all application windows"""
+        app = QtWidgets.QApplication.instance()
+        windows = app.topLevelWidgets()
+        
+        if windows:
+            # Если есть видимые окна - скрываем все
+            if any(w.isVisible() for w in windows):
+                for window in windows:
+                    window.hide()
+                self.tray_icon.showMessage(
+                    "Klipper Desk",
+                    "Окна скрыты. Для показа - двойной клик по иконке в трее",
+                    QSystemTrayIcon.Information,
+                    2000
+                )
+            else:
+                # Иначе показываем все окна
+                for window in windows:
+                    window.show()
+                    window.raise_()
+    
+    def exit_application(self):
+        """Exit application gracefully"""
+        global end
+        end = True
+        
+        # Закрываем все окна
+        app = QtWidgets.QApplication.instance()
+        for window in app.topLevelWidgets():
+            window.close()
+        
+        # Показываем сообщение
+        self.tray_icon.showMessage(
+            "Klipper Desk",
+            "Приложение завершает работу...",
+            QSystemTrayIcon.Information,
+            1000
+        )
+        
+        # Завершаем приложение
+        QtCore.QTimer.singleShot(1200, app.quit)
 
 # ---------------------------
 # Main Application
@@ -1453,11 +1560,12 @@ class KlipperApp(QtCore.QObject):
         self.printers_data = {}  # ip -> PrinterData
         self.ws_manager = WebSocketManager()
         self.widgets = []
+        self.tray_manager = None  # Добавьте этот атрибут
         
         # Очередь для накопления данных
         self._data_queue = {}
         self._update_timer = QtCore.QTimer()
-        self._update_timer.setInterval(500)  # Уменьшили до 50 мс для более плавного обновления
+        self._update_timer.setInterval(500)
         self._update_timer.timeout.connect(self._process_data_queue)
         
         # Connect WebSocket manager signals
@@ -1465,6 +1573,9 @@ class KlipperApp(QtCore.QObject):
     
     def initialize(self):
         """Initialize application based on config"""
+        # Инициализируем tray icon
+        self.tray_manager = TrayIconManager(self)
+        
         # Show settings on first run
         if self.config.config.get("first_run", True):
             dialog = SettingsDialog(self.config)
@@ -1593,6 +1704,7 @@ def main():
     args = parser.parse_args()
     
     app = QtWidgets.QApplication(sys.argv)
+    app.setQuitOnLastWindowClosed(False)  # Добавьте эту строку!
     
     # Create and initialize application
     klipper_app = KlipperApp(args.config)
@@ -1612,6 +1724,4 @@ def main():
 
 
 if __name__ == "__main__":
-
     main()
-
