@@ -37,7 +37,7 @@
 
 ## 📦 Установка
 
-#### Скомпилированный exe файл: https://github.com/OrkaLxrd/KlipperDesk/releases/download/release/KlipperDesk.exe
+#### Готовый образ можете скачать на [странице релизов](https://github.com/OrkaLxrd/KlipperDesk/releases)
 
 ## 📦 Или же вы можете запустить исходник:
 
